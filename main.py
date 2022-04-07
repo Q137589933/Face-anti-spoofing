@@ -12,6 +12,7 @@ from mainUI import Ui_MainWindow
 from MovieUI import Ui_Movie
 from PhotoUI import Ui_Photo
 from DynamicUI import Ui_Dynamic
+from SignUpUI import Ui_SignUp
 from PyQt5.Qt import QFileDialog
 from PyQt5.QtGui import QImage
 
@@ -19,6 +20,7 @@ from PyQt5.QtGui import QImage
 from dynamic.detector import detector
 import dynamic.inter_config as inter_cfg
 
+from database import db
 
 class parentWindow(QMainWindow, Ui_MainWindow):
     def __del__(self):
@@ -35,6 +37,9 @@ class parentWindow(QMainWindow, Ui_MainWindow):
     # 回调函数
     def CallBackFunctions(self):
         self.About.clicked.connect(self.about)
+        self.signInBt.clicked.connect(self.signIn)
+        self.backBt.clicked.connect(self.back)
+        self.loginBt.clicked.connect(self.loginIn)
 
     # 帮助
     def about(self):
@@ -45,6 +50,28 @@ class parentWindow(QMainWindow, Ui_MainWindow):
                                         "3.点击【动态监测】按钮根据指令做出动作，显示检测结果\n"
                                         "4.点击【帮助】按钮可查看帮助",
                                         QMessageBox.Close)
+
+    def signIn(self):
+        self.leftFrame.setVisible(False)
+        self.frame.setVisible(True)
+
+    def loginIn(self):
+        userName = self.uId.text()
+        passWd = self.passWd.text()
+        if userName != "" and passWd != "":
+            sql = f"select * from viewer where Uname = '{userName}'"
+            if(db.prepare(sql) == 0):
+                QMessageBox.warning(self, "warning", "用户名不存在", QMessageBox.Close)
+            else:
+                sql = f"select * from viewer where Uname = '{userName}' and "
+                db.update()
+        else:
+            QMessageBox.warning(self, "warning", "用户名/密码不能为空", QMessageBox.Close)
+        print("登录")
+
+    def back(self):
+        self.leftFrame.setVisible(True)
+        self.frame.setVisible(False)
 
 
 # 照片窗口
@@ -245,6 +272,30 @@ class childWindow_movie(QDialog, Ui_Movie):
             self.cap = cv2.VideoCapture(self.mvName)
             self.viewTimer.start(40)
 
+# 注册窗口
+class childWindow_signUp(QDialog, Ui_SignUp):
+    def __del__(self):
+        try:
+            self.camera.release()  # 释放资源
+        except:
+            return
+
+    def __init__(self, parent=None):
+        super(childWindow_signUp, self).__init__(parent)
+        self.setupUi(self)
+        self.CallBackFunctions()
+
+    # 回调函数
+    def CallBackFunctions(self):
+        self.signUpBt.clicked.connect(self.signUp)
+        self.backBt.clicked.connect(self.back)
+
+    def back(self):
+        self.close()
+
+    def signUp(self):
+        print("注册成功")
+
 
 # 动态检测窗口
 class childWindow_dynamic(QDialog, Ui_Dynamic):
@@ -442,14 +493,18 @@ class childWindow_dynamic(QDialog, Ui_Dynamic):
 if __name__ == '__main__':
     app = QApplication(sys.argv)
 
+    user = -1
+
     ui = parentWindow()
     ui_child_movie = childWindow_movie()
     ui_child_photo = childWindow_photo()
     ui_child_dynamic = childWindow_dynamic()
+    ui_child_signUp = childWindow_signUp()
 
     movie_btn = ui.Moviebt
     photo_btn = ui.Photobt
     dynamic_btn = ui.Dynamicbt
+    signUp_btn = ui.signUpBt
 
     movie_btn.clicked.connect(ui_child_movie.show)
     movie_btn.clicked.connect(ui_child_movie._initData)
@@ -462,6 +517,8 @@ if __name__ == '__main__':
     dynamic_btn.clicked.connect(ui_child_dynamic.show)
     dynamic_btn.clicked.connect(ui_child_dynamic._initData)
     movie_btn.clicked.connect(ui.close)
+
+    signUp_btn.clicked.connect(ui_child_signUp.show)
 
     ui.show()
     sys.exit(app.exec_())

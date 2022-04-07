@@ -62,6 +62,12 @@ class Ui_Movie(object):
         self.ReturnBt.setFont(QFont("Microsoft YaHei", 14))
         self.verticalLayout.addWidget(self.ReturnBt)
 
+        self.userLabel = QtWidgets.QLabel(self.frame)
+        self.userLabel.setText("欢迎使用")
+        self.userLabel.setAlignment(QtCore.Qt.AlignmentFlag.AlignRight)
+        self.userLabel.setGeometry(QtCore.QRect(700, 10, 200, 40))
+        self.userLabel.setObjectName("userLabel")
+
         self.retranslateUi(Movie)
         QtCore.QMetaObject.connectSlotsByName(Movie)
 

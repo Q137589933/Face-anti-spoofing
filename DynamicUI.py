@@ -55,6 +55,12 @@ class Ui_Dynamic(object):
         self.ReturnBt.setFont(QFont("Microsoft YaHei", 14))
         self.horizontalLayout.addWidget(self.ReturnBt)
 
+        self.userLabel = QtWidgets.QLabel(self.frame)
+        self.userLabel.setText("欢迎使用")
+        self.userLabel.setAlignment(QtCore.Qt.AlignmentFlag.AlignRight)
+        self.userLabel.setGeometry(QtCore.QRect(700, 10, 200, 40))
+        self.userLabel.setObjectName("userLabel")
+
         self.retranslateUi(Dynamic)
         QtCore.QMetaObject.connectSlotsByName(Dynamic)
 
