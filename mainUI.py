@@ -172,3 +172,4 @@ class Ui_MainWindow(object):
         self.About.setText(_translate("MainWindow", "帮助"))
         self.signUpBt.setText(_translate("MainWindow", "注册"))
         self.signInBt.setText(_translate("MainWindow", "登录"))
+        self.signOutBt.setText(_translate("MainWindow", "注销"))

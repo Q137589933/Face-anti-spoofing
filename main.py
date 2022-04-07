@@ -1,7 +1,9 @@
+import datetime
 import sys
 import time
 import cv2
 import dlib
+import pymysql
 from PyQt5.QtCore import QTimer
 from PyQt5.QtGui import QPixmap
 from PyQt5.QtWidgets import QApplication, QMainWindow, QDialog, QMessageBox
@@ -24,6 +26,9 @@ from dynamic.detector import detector
 import dynamic.inter_config as inter_cfg
 
 from database import db
+
+image_path = "Image/"
+movie_path = "Movie/"
 
 class parentWindow(QMainWindow, Ui_MainWindow):
     def __del__(self):
@@ -82,7 +87,6 @@ class parentWindow(QMainWindow, Ui_MainWindow):
                     self.signOutBt.setVisible(True)
         else:
             QMessageBox.warning(self, "warning", "用户名/密码不能为空", QMessageBox.Close)
-        print("登录")
 
     def back(self):
         self.leftFrame.setVisible(True)
@@ -102,6 +106,7 @@ class childWindow_photo(QDialog, Ui_Photo):
         self.setupUi(self)
         self.frame = []
         self.frame_name = ""
+        self.start_time = ""
         self.fPhoto = False
         self.Timer = QTimer()
         self.Timer.timeout.connect(self.TimerOutFunc)
@@ -110,6 +115,7 @@ class childWindow_photo(QDialog, Ui_Photo):
     def _initData(self):
         self.frame = []
         self.frame_name = ""
+        self.start_time = ""
         self.ShowLb.setPixmap(QPixmap("Image/tips.png"))
         self.fPhoto = False
         self.StartCamera()
@@ -148,6 +154,8 @@ class childWindow_photo(QDialog, Ui_Photo):
 
     # 拍照按钮函数
     def PhotoCamera(self):
+        self.start_time = datetime.datetime.now()
+        self.frame_name = image_path + self.start_time.strftime("%Y_%m_%d_%H_%M_%S") + '.jpg'
         if self.fPhoto:
             self.Timer.start(1)
         self.fPhoto = not self.fPhoto
@@ -171,11 +179,20 @@ class childWindow_photo(QDialog, Ui_Photo):
 
     # 开始检测,图片信息存储在self.frame中
     def Start(self):
-        if self.frame == []:
+        if self.frame_name == "":
             QMessageBox.information(self, "提示", "还未上传/拍摄图片", QMessageBox.Yes | QMessageBox.No, QMessageBox.Yes)
         else:
             print("开始分析")
-
+            label = 0
+            if self.start_time == "":
+                self.start_time = datetime.datetime.now()
+                self.frame_name = image_path + self.start_time.strftime("%Y_%m_%d_%H_%M_%S") + '.jpg'
+            print(self.frame_name)
+            cv2.imwrite(self.frame_name, self.frame)
+            create_time = self.start_time.strftime("%Y-%m-%d %H:%M:%S")
+            sql = f"insert into photo (path, upTime, label, user) values ('{self.frame_name}',{create_time}, {label}, {user})"
+            db.prepare(sql)
+            db.update()
 
 # 视频窗口
 class childWindow_movie(QDialog, Ui_Movie):
@@ -183,6 +200,7 @@ class childWindow_movie(QDialog, Ui_Movie):
         super(childWindow_movie, self).__init__(parent)
         self.setupUi(self)
         self.mvName = ""
+        self.start_time = ""
         self.frame = []
         self.viewTimer = QTimer()
         self.saveTimer = QTimer()
@@ -193,6 +211,7 @@ class childWindow_movie(QDialog, Ui_Movie):
 
     def _initData(self):
         self.mvName = ""
+        self.start_time = ""
         self.frame = []
         self.ShowLb.setPixmap(QPixmap("Image/tips.png"))
         self.processBar.setValue(0)
@@ -203,9 +222,6 @@ class childWindow_movie(QDialog, Ui_Movie):
     def PrepCamera(self):
         try:
             self.cap = cv2.VideoCapture(0)
-            w = int(self.cap.get(3))
-            h = int(self.cap.get(4))
-            self.out = cv2.VideoWriter('output.mp4', cv2.VideoWriter_fourcc('M', 'P', '4', 'V'), 20, (w, h))
         except Exception as e:
             print("摄像头调用失败")
 
@@ -239,7 +255,11 @@ class childWindow_movie(QDialog, Ui_Movie):
         if not self.fCamera:
             self.viewTimer.stop()
             self.PrepCamera()
-        self.mvName = "output.mp4"
+        w = int(self.cap.get(3))
+        h = int(self.cap.get(4))
+        self.start_time = datetime.datetime.now()
+        self.mvName = movie_path + self.start_time.strftime("%Y_%m_%d_%H_%M_%S") + '.mp4'
+        self.out = cv2.VideoWriter(self.mvName, cv2.VideoWriter_fourcc('M', 'P', '4', 'V'), 20, (w, h))
         self.fCamera = True
         self.mvTime = 0
         self.StartCamera()
@@ -257,7 +277,17 @@ class childWindow_movie(QDialog, Ui_Movie):
             label_name = recognition_liveness(self.mvName, './video_detect/liveness.model',
                                                    './video_detect/label_encoder.pickle',
                                                    './video_detect/face_detector', confidence=0.7)
-            print(label_name)
+            label = 0
+            if label_name == 'fake':
+                label = 0
+            else:
+                label = 1
+            if self.start_time == "":
+                self.start_time = datetime.datetime.now()
+            create_time = self.start_time.strftime("%Y-%m-%d %H:%M:%S")
+            sql = f"insert into video (path, upTime, label, user) values ('{self.mvName}',{create_time}, {label}, {user})"
+            db.prepare(sql)
+            db.update()
 
     def Back(self):
         ui.show()
@@ -320,18 +350,19 @@ class childWindow_signUp(QDialog, Ui_SignUp):
         userName = self.uid.text()
         passWord = self.password.text()
         if passWord != self.repassWd.text():
-            QMessageBox(self, "warning", "两次密码输入不一致", QMessageBox.Close)
+            QMessageBox.warning(self, "warning", "两次密码输入不一致", QMessageBox.Close)
             return
         email = self.email.text()
         tel = self.email.text()
         sql = f"select * from viewer where Uname = '{userName}'"
         if db.prepare(sql) != 0:
-            QMessageBox(self, "warning", "账号已存在", QMessageBox.Close)
+            QMessageBox.warning(self, "warning", "账号已存在", QMessageBox.Close)
             return
         sql = f"insert into viewer (Uname, password, phone, email) values ('{userName}', '{passWord}', '{email}', '{tel}')"
         db.prepare(sql)
         db.update()
-        print("注册成功")
+        QMessageBox.information(self, "tips", "注册成功！", QMessageBox.Close)
+        self.close()
 
 # 动态检测窗口
 class childWindow_dynamic(QDialog, Ui_Dynamic):
@@ -552,8 +583,8 @@ if __name__ == '__main__':
     signUp_btn = ui.signUpBt
 
     movie_btn.clicked.connect(lambda:open_childWindow(ui_child_movie))
-    photo_btn.clicked.connect(lambda: open_childWindow(ui_child_movie))
-    dynamic_btn.clicked.connect(lambda: open_childWindow(ui_child_movie))
+    photo_btn.clicked.connect(lambda: open_childWindow(ui_child_photo))
+    dynamic_btn.clicked.connect(lambda: open_childWindow(ui_child_dynamic))
 
     signUp_btn.clicked.connect(ui_child_signUp.show)
 
