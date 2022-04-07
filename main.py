@@ -7,13 +7,16 @@ from PyQt5.QtGui import QPixmap
 from PyQt5.QtWidgets import QApplication, QMainWindow, QDialog, QMessageBox
 from numpy import iterable
 
-from dynamic.pose_liveness_video import load_model, face_direction_detect
+# from dynamic.pose_liveness_video import load_model, face_direction_detect
 from mainUI import Ui_MainWindow
 from MovieUI import Ui_Movie
 from PhotoUI import Ui_Photo
 from DynamicUI import Ui_Dynamic
 from PyQt5.Qt import QFileDialog
 from PyQt5.QtGui import QImage
+
+# 视频检测
+from video_detect.main import recognition_liveness
 
 # 主窗口
 from dynamic.detector import detector
@@ -201,7 +204,14 @@ class childWindow_movie(QDialog, Ui_Movie):
         if self.mvName == "":
             QMessageBox.information(self, "提示", "还未上传/录制视频", QMessageBox.Yes | QMessageBox.No, QMessageBox.Yes)
         else:
+            print(self.mvName)
+            print(self.cap)
+
             print("开始分析")
+            label_name = recognition_liveness(self.mvName, './video_detect/liveness.model',
+                                                   './video_detect/label_encoder.pickle',
+                                                   './video_detect/face_detector', confidence=0.7)
+            print(label_name)
 
     def Back(self):
         ui.show()
@@ -281,11 +291,11 @@ class childWindow_dynamic(QDialog, Ui_Dynamic):
         print(1)
         self.stats_init()  # 初始化统计参数
 
-    def model_init(self):
-        self.face_pos_detector = dlib.get_frontal_face_detector()
-        self.detector = detector(detector=dlib.shape_predictor(inter_cfg.landmarks),
-                                 face_pos_detector=self.face_pos_detector)
-        self.face_dir_model = load_model(inter_cfg.path_hopenet, device=inter_cfg.device)
+    # def model_init(self):
+    #     self.face_pos_detector = dlib.get_frontal_face_detector()
+    #     self.detector = detector(detector=dlib.shape_predictor(inter_cfg.landmarks),
+    #                              face_pos_detector=self.face_pos_detector)
+    #     self.face_dir_model = load_model(inter_cfg.path_hopenet, device=inter_cfg.device)
 
     # 回调函数
     def CallBackFunctions(self):
@@ -430,13 +440,13 @@ class childWindow_dynamic(QDialog, Ui_Dynamic):
         open_frame, open_times = self.detector.mouth_open(img, rect, open_frame, open_times)
         return open_frame, open_times
 
-    def detect_turn_head(self, img, rect, right=0):  # right=0：左转头  #检测转头
-        y1 = rect.top() if rect.top() > 0 else 0
-        y2 = rect.bottom() if rect.bottom() > 0 else 0
-        x1 = rect.left() if rect.left() > 0 else 0
-        x2 = rect.right() if rect.right() > 0 else 0
-        head = img[x1:x2, y1:y2, :]
-        return face_direction_detect(head, self.face_dir_model, right, device=inter_cfg.device)
+    # def detect_turn_head(self, img, rect, right=0):  # right=0：左转头  #检测转头
+    #     y1 = rect.top() if rect.top() > 0 else 0
+    #     y2 = rect.bottom() if rect.bottom() > 0 else 0
+    #     x1 = rect.left() if rect.left() > 0 else 0
+    #     x2 = rect.right() if rect.right() > 0 else 0
+    #     head = img[x1:x2, y1:y2, :]
+    #     return face_direction_detect(head, self.face_dir_model, right, device=inter_cfg.device)
 
 
 if __name__ == '__main__':
