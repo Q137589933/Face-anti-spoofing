@@ -39,6 +39,13 @@ class Ui_MainWindow(object):
         self.signUpBt.setFont(QFont("Microsoft YaHei", 14))
         self.horizontalLayout.addWidget(self.signUpBt)
 
+        self.signOutBt = QtWidgets.QPushButton(self.leftLayoutWidget)
+        self.signOutBt.setObjectName("signOutBt")
+        self.signOutBt.setFixedSize(100, 50)
+        self.signOutBt.setFont(QFont("Microsoft YaHei", 14))
+        self.signOutBt.setVisible(False)
+        self.horizontalLayout.addWidget(self.signOutBt)
+
         self.layoutWidget = QtWidgets.QWidget(MainWindow)
         self.layoutWidget.setGeometry(QtCore.QRect(980, 0, 300, 720))
         self.layoutWidget.setObjectName("layoutWidget")

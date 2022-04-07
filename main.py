@@ -17,7 +17,7 @@ from PyQt5.Qt import QFileDialog
 from PyQt5.QtGui import QImage
 
 # 视频检测
-from video_detect.main import recognition_liveness
+# from video_detect.main import recognition_liveness
 
 # 主窗口
 from dynamic.detector import detector
@@ -41,6 +41,7 @@ class parentWindow(QMainWindow, Ui_MainWindow):
     def CallBackFunctions(self):
         self.About.clicked.connect(self.about)
         self.signInBt.clicked.connect(self.signIn)
+        self.signOutBt.clicked.connect(self.signOut)
         self.backBt.clicked.connect(self.back)
         self.loginBt.clicked.connect(self.loginIn)
 
@@ -66,8 +67,19 @@ class parentWindow(QMainWindow, Ui_MainWindow):
             if(db.prepare(sql) == 0):
                 QMessageBox.warning(self, "warning", "用户名不存在", QMessageBox.Close)
             else:
-                sql = f"select * from viewer where Uname = '{userName}' and "
-                db.update()
+                sql = f"select UId from viewer where Uname = '{userName}' and password = '{passWd}'"
+                if(db.prepare(sql) == 0):
+                    QMessageBox.warning(self, "warning", "密码不正确", QMessageBox.Close)
+                else:
+                    result = db.selectOne(sql)
+                    global user
+                    user = result[0]
+                    self.userLabel.setText(f"用户：{userName}")
+                    self.back()
+
+                    self.signInBt.setVisible(False)
+                    self.signUpBt.setVisible(False)
+                    self.signOutBt.setVisible(True)
         else:
             QMessageBox.warning(self, "warning", "用户名/密码不能为空", QMessageBox.Close)
         print("登录")
@@ -76,6 +88,12 @@ class parentWindow(QMainWindow, Ui_MainWindow):
         self.leftFrame.setVisible(True)
         self.frame.setVisible(False)
 
+    def signOut(self):
+        global user
+        user = -1
+        self.signInBt.setVisible(True)
+        self.signUpBt.setVisible(True)
+        self.signOutBt.setVisible(False)
 
 # 照片窗口
 class childWindow_photo(QDialog, Ui_Photo):
@@ -118,6 +136,7 @@ class childWindow_photo(QDialog, Ui_Photo):
         self.PrepCamera()
         self.Timer.start(1)  # 每隔1ms刷新一次
         self.timelb = time.perf_counter()
+        #这里的数据库还没加
 
     def TimerOutFunc(self):
         success, img = self.camera.read()
@@ -235,10 +254,11 @@ class childWindow_movie(QDialog, Ui_Movie):
             print(self.cap)
 
             print("开始分析")
-            label_name = recognition_liveness(self.mvName, './video_detect/liveness.model',
-                                                   './video_detect/label_encoder.pickle',
-                                                   './video_detect/face_detector', confidence=0.7)
-            print(label_name)
+            #label_name = recognition_liveness(self.mvName, './video_detect/liveness.model',
+            #                                       './video_detect/label_encoder.pickle',
+            #                                       './video_detect/face_detector', confidence=0.7)
+            #print(label_name)
+
 
     def Back(self):
         ui.show()
@@ -284,12 +304,6 @@ class childWindow_movie(QDialog, Ui_Movie):
 
 # 注册窗口
 class childWindow_signUp(QDialog, Ui_SignUp):
-    def __del__(self):
-        try:
-            self.camera.release()  # 释放资源
-        except:
-            return
-
     def __init__(self, parent=None):
         super(childWindow_signUp, self).__init__(parent)
         self.setupUi(self)
@@ -304,8 +318,21 @@ class childWindow_signUp(QDialog, Ui_SignUp):
         self.close()
 
     def signUp(self):
+        userName = self.uid.text()
+        passWord = self.password.text()
+        if passWord != self.repassWd.text():
+            QMessageBox(self, "warning", "两次密码输入不一致", QMessageBox.Close)
+            return
+        email = self.email.text()
+        tel = self.email.text()
+        sql = f"select * from viewer where Uname = '{userName}'"
+        if db.prepare(sql) != 0:
+            QMessageBox(self, "warning", "账号已存在", QMessageBox.Close)
+            return
+        sql = f"insert into viewer (Uname, password, phone, email) values ('{userName}', '{passWord}', '{email}', '{tel}')"
+        db.prepare(sql)
+        db.update()
         print("注册成功")
-
 
 # 动态检测窗口
 class childWindow_dynamic(QDialog, Ui_Dynamic):
@@ -500,9 +527,18 @@ class childWindow_dynamic(QDialog, Ui_Dynamic):
         return face_direction_detect(head, self.face_dir_model, right, device=inter_cfg.device)
 
 
+def open_childWindow(child_window):
+    if user != -1:
+        child_window.show()
+        child_window._initData()
+        ui.close()
+    else:
+        QMessageBox.warning(ui, "warning", "请先登录!", QMessageBox.Close)
+
 if __name__ == '__main__':
     app = QApplication(sys.argv)
 
+    global user
     user = -1
 
     ui = parentWindow()
@@ -516,17 +552,9 @@ if __name__ == '__main__':
     dynamic_btn = ui.Dynamicbt
     signUp_btn = ui.signUpBt
 
-    movie_btn.clicked.connect(ui_child_movie.show)
-    movie_btn.clicked.connect(ui_child_movie._initData)
-    movie_btn.clicked.connect(ui.close)
-
-    photo_btn.clicked.connect(ui_child_photo.show)
-    photo_btn.clicked.connect(ui_child_photo._initData)
-    movie_btn.clicked.connect(ui.close)
-
-    dynamic_btn.clicked.connect(ui_child_dynamic.show)
-    dynamic_btn.clicked.connect(ui_child_dynamic._initData)
-    movie_btn.clicked.connect(ui.close)
+    movie_btn.clicked.connect(lambda:open_childWindow(ui_child_movie))
+    photo_btn.clicked.connect(lambda: open_childWindow(ui_child_movie))
+    dynamic_btn.clicked.connect(lambda: open_childWindow(ui_child_movie))
 
     signUp_btn.clicked.connect(ui_child_signUp.show)
 
