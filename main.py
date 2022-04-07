@@ -17,7 +17,7 @@ from PyQt5.Qt import QFileDialog
 from PyQt5.QtGui import QImage
 
 # 视频检测
-# from video_detect.main import recognition_liveness
+from video_detect.main import recognition_liveness
 
 # 主窗口
 from dynamic.detector import detector
@@ -254,11 +254,10 @@ class childWindow_movie(QDialog, Ui_Movie):
             print(self.cap)
 
             print("开始分析")
-            #label_name = recognition_liveness(self.mvName, './video_detect/liveness.model',
-            #                                       './video_detect/label_encoder.pickle',
-            #                                       './video_detect/face_detector', confidence=0.7)
-            #print(label_name)
-
+            label_name = recognition_liveness(self.mvName, './video_detect/liveness.model',
+                                                   './video_detect/label_encoder.pickle',
+                                                   './video_detect/face_detector', confidence=0.7)
+            print(label_name)
 
     def Back(self):
         ui.show()
