@@ -30,7 +30,6 @@ class Ui_PreView(object):
 class Ui_Editor(object):
     def setupUi(self, Editor):
         self.data = []
-        self.preview = []
         Editor.setObjectName("Editor")
         Editor.resize(1280, 720)
 
@@ -114,7 +113,6 @@ class Ui_Editor(object):
         self.delUserBtn.setObjectName("delUserBtn")
         self.delUserBtn.setFont(QFont("Microsoft YaHei", 14))
         self.delUserBtn.setText("删除全部")
-        self.delUserBtn.clicked.connect(lambda :self.delUserData())
 
     # 相机管理界面
     def setUpPhotoFrame(self):
@@ -147,7 +145,6 @@ class Ui_Editor(object):
         self.photoSearchBtn.setFont(QFont("Microsoft YaHei", 14))
         self.photoSearchBtn.setFixedSize(80, 40)
         self.photoSearchBtn.setText("查询")
-        self.photoSearchBtn.clicked.connect(self.searchPhotoData)
         horizontalLayout.addWidget(self.photoSearchBtn, alignment=QtCore.Qt.AlignmentFlag.AlignLeft)
 
         self.photoTableWidget = QtWidgets.QTableWidget(self.photoFrame)
@@ -168,7 +165,6 @@ class Ui_Editor(object):
         self.delPhotoBtn.setObjectName("delPhotoBtn")
         self.delPhotoBtn.setFont(QFont("Microsoft YaHei", 14))
         self.delPhotoBtn.setText("删除全部")
-        self.delPhotoBtn.clicked.connect(lambda :self.delPhotoData())
 
     # 视频管理界面
     def setUpVideoFrame(self):
@@ -202,7 +198,6 @@ class Ui_Editor(object):
         self.videoSearchBtn.setFixedSize(80, 40)
         self.videoSearchBtn.setText("查询")
 
-        self.videoSearchBtn.clicked.connect(self.searchVideoData)
         horizontalLayout.addWidget(self.videoSearchBtn, alignment=QtCore.Qt.AlignmentFlag.AlignLeft)
 
         self.videoTableWidget = QtWidgets.QTableWidget(self.videoFrame)
@@ -223,130 +218,6 @@ class Ui_Editor(object):
         self.delVideoBtn.setObjectName("delVideoBtn")
         self.delVideoBtn.setFont(QFont("Microsoft YaHei", 14))
         self.delVideoBtn.setText("删除全部")
-        self.delVideoBtn.clicked.connect(lambda :self.delVideoData())
-
-
-    # 查询图片数据
-    def searchPhotoData(self):
-        uid = self.photoLineEdit.text()
-        if uid != "":
-            self.ReFreshPhotoData(uid)
-
-    # 查询视频数据
-    def searchVideoData(self):
-        uid = self.videoLineEdit.text()
-        if uid != "":
-            self.ReFreshVideoData(uid)
-
-    # 更新用户数据
-    def ReFreshUserData(self):
-        data = editor.getUserData()
-        self.userTableWidget.clearContents()
-        self.userTableWidget.setRowCount(len(data))
-        row = 0
-        bindEvent = lambda button, row: button.clicked.connect(lambda: self.delUserData(data[row][0]))
-        for tup in data:
-            col = 0
-            for item in tup:
-                oneitem = QtWidgets.QTableWidgetItem(str(item))
-                oneitem.setTextAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
-                self.userTableWidget.setItem(row, col, oneitem)
-                col += 1
-            btnDelete = QtWidgets.QPushButton()
-            btnDelete.setText("删除")
-            bindEvent(btnDelete, row)
-            self.userTableWidget.setCellWidget(row, col, btnDelete)
-            row += 1
-
-    # 删除用户数据
-    def delUserData(self, *args):
-        editor.delUserData(*args)
-        self.ReFreshUserData()
-
-    # 删除相机数据
-    def delPhotoData(self, *args):
-        editor.delPhotoItem(*args)
-        self.ReFreshPhotoData()
-
-    # 删除视频数据
-    def delVideoData(self, *args):
-        editor.delMovieItem(*args)
-        self.ReFreshVideoData()
-
-    # 更新图片数据
-    def ReFreshPhotoData(self, *args):
-        data = editor.getPhotoData(*args)
-        self.photoTableWidget.clearContents()
-        self.photoTableWidget.setRowCount(len(data))
-        bindDelEvent = lambda button, row: button.clicked.connect(lambda: self.delPhotoData(data[row][0]))
-        bindShowEvent = lambda button, row: button.clicked.connect(lambda: self.showPhotoData(data[row][1]))
-        row = 0
-        for tup in data:
-            col = 0
-            for item in tup:
-                if col == 2:
-                    item = item.strftime("%Y-%m-%d %H:%M:%S")
-                oneitem = QtWidgets.QTableWidgetItem(str(item))
-                oneitem.setTextAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
-                self.photoTableWidget.setItem(row, col, oneitem)
-                col += 1
-            btnDelete = QtWidgets.QPushButton()
-            btnDelete.setText("删除")
-            bindDelEvent(btnDelete, row)
-            self.photoTableWidget.setCellWidget(row, col, btnDelete)
-
-            btnShow = QtWidgets.QPushButton()
-            btnShow.setText("预览")
-            bindShowEvent(btnShow, row)
-            self.photoTableWidget.setCellWidget(row, col + 1, btnShow)
-            row += 1
-
-    # 预览照片
-    def showPhotoData(self, path):
-        self.preview.show()
-        frame = cv2.imread(path)
-        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        height, width, bytesPerComponent = frame.shape
-        bytesPerLine = bytesPerComponent * width
-        q_image = QImage(frame.data, width, height, bytesPerLine, QImage.Format_RGB888).scaled(self.preview.label.width(),self.preview.label.height())
-        self.preview.label.setPixmap(QPixmap.fromImage(q_image))
-
-    # 更新视频数据
-    def ReFreshVideoData(self, *args):
-        data = editor.getVideoData(*args)
-        self.videoTableWidget.clearContents()
-        self.videoTableWidget.setRowCount(len(data))
-        row = 0
-        for tup in data:
-            col = 0
-            for item in tup:
-                if col == 2:
-                    item = item.strftime("%Y-%m-%d %H:%M:%S")
-                oneitem = QtWidgets.QTableWidgetItem(item)
-                oneitem.setTextAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
-                self.videoTableWidget.setItem(row, col, oneitem)
-                col += 1
-            btnDelete = QtWidgets.QPushButton()
-            btnDelete.setText("删除")
-            btnDelete.clicked.connect(lambda row = row: self.delVideoData(data[row][0]))
-            self.videoTableWidget.setCellWidget(row, col, btnDelete)
-
-            btnShow = QtWidgets.QPushButton()
-            btnShow.setText("预览")
-            btnShow.clicked.connect(lambda row = row: editor.showData(data[row][1], self.preview))
-            self.videoTableWidget.setCellWidget(row, col + 1, btnShow)
-            row += 1
-
-    def showChildFrame(self, editType):
-        for item in self.rightFrames.values():
-            item.setVisible(False)
-        if editType == Editor_Type.User:
-            self.ReFreshUserData()
-        elif editType == Editor_Type.PHOTO:
-            self.ReFreshPhotoData()
-        else:
-            self.ReFreshVideoData()
-        self.rightFrames[editType].setVisible(True)
 
     def retranslateUi(self, Editor):
         _translate = QtCore.QCoreApplication.translate
@@ -355,6 +226,3 @@ class Ui_Editor(object):
         self.photoBtn.setText(_translate("Editor", "图片(Photo)"))
         self.videoBtn.setText(_translate("Editor", "视频(Video)"))
         self.signOutBtn.setText(_translate("Editor", "注销"))
-        self.userBtn.clicked.connect(lambda: self.showChildFrame(Editor_Type.User))
-        self.photoBtn.clicked.connect(lambda: self.showChildFrame(Editor_Type.PHOTO))
-        self.videoBtn.clicked.connect(lambda: self.showChildFrame(Editor_Type.MOVIE))

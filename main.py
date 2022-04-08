@@ -6,7 +6,9 @@ import dlib
 from PyQt5.QtCore import QTimer
 from PyQt5.QtGui import QPixmap
 from PyQt5.QtWidgets import QApplication, QMainWindow, QDialog, QMessageBox
+from Editor import editor
 from numpy import iterable
+from  PyQt5 import QtWidgets, QtCore
 
 from dynamic.pose_liveness_video import load_model, face_direction_detect
 from UI.mainUI import Ui_MainWindow
@@ -14,7 +16,7 @@ from UI.MovieUI import Ui_Movie
 from UI.PhotoUI import Ui_Photo
 from UI.DynamicUI import Ui_Dynamic
 from UI.SignUpUI import Ui_SignUp
-from UI.EditorUI import Ui_Editor, Ui_PreView
+from UI.EditorUI import Ui_Editor, Ui_PreView, Editor_Type
 from PyQt5.Qt import QFileDialog
 from PyQt5.QtGui import QImage
 
@@ -144,7 +146,7 @@ class childWindow_photo(QDialog, Ui_Photo):
         self.frame = []
         self.frame_name = ""
         self.start_time = ""
-        self.ShowLb.setPixmap(QPixmap("Image/tips.png"))
+        self.ShowLb.setPixmap(QPixmap("Icon/tips.png"))
         self.fPhoto = False
         self.StartCamera()
 
@@ -242,7 +244,7 @@ class childWindow_movie(QDialog, Ui_Movie):
         self.mvName = ""
         self.start_time = ""
         self.frame = []
-        self.ShowLb.setPixmap(QPixmap("Image/tips.png"))
+        self.ShowLb.setPixmap(QPixmap("Icon/tips.png"))
         self.processBar.setValue(0)
         self.rePlayBt.setEnabled(False)
         self.PrepCamera()
@@ -273,10 +275,14 @@ class childWindow_movie(QDialog, Ui_Movie):
         self.cap.release()
         self.viewTimer.stop()
         self.saveTimer.stop()
+        self.start_time = datetime.datetime.now()
         mvName, _ = QFileDialog.getOpenFileName(self, "Open", "", "*.mp4;*.avi;*mpeg;;All Files(*)")
         if mvName != "":
-            self.mvName = mvName
             self.cap = cv2.VideoCapture(mvName)
+            self.mvName = movie_path + self.start_time.strftime("%Y_%m_%d_%H_%M_%S") + '.mp4'
+            w = int(self.cap.get(3))
+            h = int(self.cap.get(4))
+            self.out = cv2.VideoWriter(self.mvName, cv2.VideoWriter_fourcc('M', 'P', '4', 'V'), 20, (w, h))
             self.viewTimer.start(40)
 
     # 录制视频
@@ -306,13 +312,11 @@ class childWindow_movie(QDialog, Ui_Movie):
             label_name = recognition_liveness(self.mvName, './video_detect/liveness.model',
                                                    './video_detect/label_encoder.pickle',
                                                    './video_detect/face_detector', confidence=0.7)
-            label = 0
             if label_name == 'fake':
                 label = 0
             else:
                 label = 1
-            if self.start_time == "":
-                self.start_time = datetime.datetime.now()
+
             create_time = self.start_time.strftime("%Y-%m-%d %H:%M:%S")
             sql = f"insert into video (path, upTime, label, user) values ('{self.mvName}','{create_time}', {label}, {_user})"
             db.prepare(sql)
@@ -330,15 +334,17 @@ class childWindow_movie(QDialog, Ui_Movie):
 
     def viewCam(self):
         success, frame = self.cap.read()
+        self.out.write(frame)
         if success:
             if self.fCamera:
                 self.mvTime = self.mvTime + 1
-                self.out.write(frame)
                 self.processBar.setValue(self.mvTime)
             self.OpenFrame(frame)
         else:
             self.viewTimer.stop()
             self.cap.release()
+            if not self.fCamera:
+                self.out.release()
 
     def saveCam(self):
         self.fCamera = False
@@ -372,6 +378,7 @@ class childWindow_signUp(QDialog, Ui_SignUp):
         super(childWindow_signUp, self).show()
         self.uid.setText("")
         self.password.setText("")
+        self.repassWd.setText("")
         self.email.setText("")
         self.tel.setText("")
 
@@ -597,11 +604,22 @@ class childWindow_dynamic(QDialog, Ui_Dynamic):
 class childWindow_editor(QDialog, Ui_Editor):
     def __init__(self, parent=None):
         super(childWindow_editor, self).__init__(parent)
+        self.viewTimer = QTimer()
+        self.viewTimer.timeout.connect(self.previewVideo)
         self.setupUi(self)
         self.CallBackFunctions()
 
+    def previewVideo(self):
+        success, frame = self.cap.read()
+        if success:
+            self.OpenFrame(frame)
+        else:
+            self.viewTimer.stop()
+            self.cap.release()
+
     def show(self):
         super(childWindow_editor, self).show()
+        self.showChildFrame(Editor_Type.User)
         if _user == -1:
             self.infoLabel.setText("欢迎使用")
         else:
@@ -611,6 +629,14 @@ class childWindow_editor(QDialog, Ui_Editor):
     # 回调函数
     def CallBackFunctions(self):
         self.signOutBtn.clicked.connect(self.Back)
+        self.photoSearchBtn.clicked.connect(self.searchPhotoData)
+        self.videoSearchBtn.clicked.connect(self.searchVideoData)
+        self.delUserBtn.clicked.connect(lambda :self.delUserData())
+        self.delPhotoBtn.clicked.connect(lambda : self.delPhotoData())
+        self.delVideoBtn.clicked.connect(lambda : self.delVideoData())
+        self.userBtn.clicked.connect(lambda : self.showChildFrame(Editor_Type.User))
+        self.photoBtn.clicked.connect(lambda : self.showChildFrame(Editor_Type.PHOTO))
+        self.videoBtn.clicked.connect(lambda : self.showChildFrame(Editor_Type.MOVIE))
 
     def Back(self):
         global _user, _userName
@@ -618,6 +644,141 @@ class childWindow_editor(QDialog, Ui_Editor):
         _userName = ""
         ui.show()
         self.close()
+
+    # 搜索
+    def searchPhotoData(self):
+        uid = self.photoLineEdit.text()
+        if uid != "":
+            self.ReFreshPhotoData(uid)
+
+    # 查询视频数据
+    def searchVideoData(self):
+        uid = self.videoLineEdit.text()
+        if uid != "":
+            self.ReFreshVideoData(uid)
+
+    # 更新用户数据
+    def ReFreshUserData(self):
+        data = editor.getUserData()
+        self.userTableWidget.clearContents()
+        self.userTableWidget.setRowCount(len(data))
+        row = 0
+        bindEvent = lambda button, row: button.clicked.connect(lambda: self.delUserData(data[row][0]))
+        for tup in data:
+            col = 0
+            for item in tup:
+                oneitem = QtWidgets.QTableWidgetItem(str(item))
+                oneitem.setTextAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
+                self.userTableWidget.setItem(row, col, oneitem)
+                col += 1
+            btnDelete = QtWidgets.QPushButton()
+            btnDelete.setText("删除")
+            bindEvent(btnDelete, row)
+            self.userTableWidget.setCellWidget(row, col, btnDelete)
+            row += 1
+
+    # 删除用户数据
+    def delUserData(self, *args):
+        editor.delUserData(*args)
+        self.ReFreshUserData()
+
+    # 删除相机数据
+    def delPhotoData(self, *args):
+        editor.delPhotoItem(*args)
+        self.ReFreshPhotoData()
+
+    # 删除视频数据
+    def delVideoData(self, *args):
+        editor.delMovieItem(*args)
+        self.ReFreshVideoData()
+
+    # 更新图片数据
+    def ReFreshPhotoData(self, *args):
+        data = editor.getPhotoData(*args)
+        self.photoTableWidget.clearContents()
+        self.photoTableWidget.setRowCount(len(data))
+        bindDelEvent = lambda button, row: button.clicked.connect(lambda: self.delPhotoData(data[row][0]))
+        bindShowEvent = lambda button, row: button.clicked.connect(lambda: self.showPhotoData(data[row][1]))
+        row = 0
+        for tup in data:
+            col = 0
+            for item in tup:
+                if col == 2:
+                    item = item.strftime("%Y-%m-%d %H:%M:%S")
+                oneitem = QtWidgets.QTableWidgetItem(str(item))
+                oneitem.setTextAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
+                self.photoTableWidget.setItem(row, col, oneitem)
+                col += 1
+            btnDelete = QtWidgets.QPushButton()
+            btnDelete.setText("删除")
+            bindDelEvent(btnDelete, row)
+            self.photoTableWidget.setCellWidget(row, col, btnDelete)
+
+            btnShow = QtWidgets.QPushButton()
+            btnShow.setText("预览")
+            bindShowEvent(btnShow, row)
+            self.photoTableWidget.setCellWidget(row, col + 1, btnShow)
+            row += 1
+
+    # 预览照片
+    def showPhotoData(self, path):
+        ui_child_preview.show()
+        frame = cv2.imread(path)
+        self.OpenFrame(frame)
+
+    # 预览视频
+    def showVideoData(self, path):
+        ui_child_preview.show()
+        self.cap = cv2.VideoCapture(path)
+        self.viewTimer.start(40)
+
+    # 更新视频数据
+    def ReFreshVideoData(self, *args):
+        data = editor.getVideoData(*args)
+        self.videoTableWidget.clearContents()
+        self.videoTableWidget.setRowCount(len(data))
+        bindDelEvent = lambda button, row: button.clicked.connect(lambda: self.delVideoData(data[row][0]))
+        bindShowEvent = lambda button, row: button.clicked.connect(lambda: self.showVideoData(data[row][1]))
+        row = 0
+        for tup in data:
+            col = 0
+            for item in tup:
+                if col == 2:
+                    item = item.strftime("%Y-%m-%d %H:%M:%S")
+                oneitem = QtWidgets.QTableWidgetItem(str(item))
+                oneitem.setTextAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
+                self.videoTableWidget.setItem(row, col, oneitem)
+                col += 1
+            btnDelete = QtWidgets.QPushButton()
+            btnDelete.setText("删除")
+            bindDelEvent(btnDelete, row)
+            self.videoTableWidget.setCellWidget(row, col, btnDelete)
+
+            btnShow = QtWidgets.QPushButton()
+            btnShow.setText("预览")
+            bindShowEvent(btnShow, row)
+            self.videoTableWidget.setCellWidget(row, col + 1, btnShow)
+            row += 1
+
+    def OpenFrame(self, frame):
+        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        height, width, bytesPerComponent = frame.shape
+        bytesPerLine = bytesPerComponent * width
+        q_image = QImage(frame.data, width, height, bytesPerLine, QImage.Format_RGB888).scaled(ui_child_preview.label.width(),
+                                                                                               ui_child_preview.label.height())
+        ui_child_preview.label.setPixmap(QPixmap.fromImage(q_image))
+
+    def showChildFrame(self, editType):
+        for item in self.rightFrames.values():
+            item.setVisible(False)
+        if editType == Editor_Type.User:
+            self.ReFreshUserData()
+        elif editType == Editor_Type.PHOTO:
+            self.ReFreshPhotoData()
+        else:
+            self.ReFreshVideoData()
+        self.rightFrames[editType].setVisible(True)
+
 
 # 预览窗口
 class childWindow_preview(QDialog, Ui_PreView):

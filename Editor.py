@@ -25,8 +25,15 @@ class Editor():
     def delMovieItem(self, *args):
         sql = ""
         if len(args) == 0:
+            sql = f"select path from video"
+            results = db.selectAll(sql)
+            for item in results:
+                os.remove(item[0])
             sql = "delete from table video"
         elif len(args) == 1:
+            sql = f"select path from video where VId = {args[0]}"
+            result = db.selectOne(sql)
+            os.remove(result[0])
             sql = f"delete from video where VId={args[0]}"
         if sql != "":
             db.prepare(sql)
