@@ -54,6 +54,7 @@ class parentWindow(QMainWindow, Ui_MainWindow):
             self.signInBt.setVisible(False)
             self.signUpBt.setVisible(False)
             self.signOutBt.setVisible(True)
+        self.back()
 
     # 回调函数
     def CallBackFunctions(self):
@@ -75,6 +76,7 @@ class parentWindow(QMainWindow, Ui_MainWindow):
 
     def signIn(self):
         self.leftFrame.setVisible(False)
+        self.passWd.setText("")
         self.frame.setVisible(True)
 
     def loginIn(self):
@@ -365,6 +367,13 @@ class childWindow_signUp(QDialog, Ui_SignUp):
         super(childWindow_signUp, self).__init__(parent)
         self.setupUi(self)
         self.CallBackFunctions()
+
+    def show(self):
+        super(childWindow_signUp, self).show()
+        self.uid.setText("")
+        self.password.setText("")
+        self.email.setText("")
+        self.tel.setText("")
 
     # 回调函数
     def CallBackFunctions(self):

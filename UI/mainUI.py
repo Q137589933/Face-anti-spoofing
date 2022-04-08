@@ -16,7 +16,7 @@ class Ui_MainWindow(object):
         self.startBg = QtWidgets.QLabel(self.leftFrame)
         self.startBg.setGeometry(QtCore.QRect(0, 0, 980, 720))
         self.startBg.setText("")
-        self.startBg.setPixmap(QtGui.QPixmap("Image/Start.png"))
+        self.startBg.setPixmap(QtGui.QPixmap("Icon/Start.png"))
         self.startBg.setObjectName("startBg")
 
         self.leftLayoutWidget = QtWidgets.QWidget(self.leftFrame)
