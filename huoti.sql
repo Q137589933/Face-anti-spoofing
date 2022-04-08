@@ -47,6 +47,7 @@ CREATE TABLE `editor`  (
   PRIMARY KEY (`EId`) USING BTREE
 ) ENGINE = InnoDB CHARACTER SET = utf8 COLLATE = utf8_general_ci ROW_FORMAT = Dynamic;
 
+insert into editor(EId, Ename, password, phone, email) values (1, 'daq1', '123456', '12345678911', 'abc@qq.com');
 -- ----------------------------
 -- Table structure for photo
 -- ----------------------------

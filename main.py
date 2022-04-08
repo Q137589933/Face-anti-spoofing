@@ -3,18 +3,18 @@ import sys
 import time
 import cv2
 import dlib
-import pymysql
 from PyQt5.QtCore import QTimer
 from PyQt5.QtGui import QPixmap
 from PyQt5.QtWidgets import QApplication, QMainWindow, QDialog, QMessageBox
 from numpy import iterable
 
 from dynamic.pose_liveness_video import load_model, face_direction_detect
-from mainUI import Ui_MainWindow
-from MovieUI import Ui_Movie
-from PhotoUI import Ui_Photo
-from DynamicUI import Ui_Dynamic
-from SignUpUI import Ui_SignUp
+from UI.mainUI import Ui_MainWindow
+from UI.MovieUI import Ui_Movie
+from UI.PhotoUI import Ui_Photo
+from UI.DynamicUI import Ui_Dynamic
+from UI.SignUpUI import Ui_SignUp
+from UI.EditorUI import Ui_Editor, Ui_PreView
 from PyQt5.Qt import QFileDialog
 from PyQt5.QtGui import QImage
 
@@ -42,6 +42,19 @@ class parentWindow(QMainWindow, Ui_MainWindow):
         self.setupUi(self)
         self.CallBackFunctions()
 
+    def show(self):
+        super(parentWindow, self).show()
+        if _user == -1:
+            self.userLabel.setText("欢迎使用")
+            self.signInBt.setVisible(True)
+            self.signUpBt.setVisible(True)
+            self.signOutBt.setVisible(False)
+        else:
+            self.userLabel.setText(f"用户：{_userName}")
+            self.signInBt.setVisible(False)
+            self.signUpBt.setVisible(False)
+            self.signOutBt.setVisible(True)
+
     # 回调函数
     def CallBackFunctions(self):
         self.About.clicked.connect(self.about)
@@ -65,26 +78,38 @@ class parentWindow(QMainWindow, Ui_MainWindow):
         self.frame.setVisible(True)
 
     def loginIn(self):
+        global _user, _userName
         userName = self.uId.text()
         passWd = self.passWd.text()
         if userName != "" and passWd != "":
-            sql = f"select * from viewer where Uname = '{userName}'"
-            if(db.prepare(sql) == 0):
-                QMessageBox.warning(self, "warning", "用户名不存在", QMessageBox.Close)
-            else:
-                sql = f"select UId from viewer where Uname = '{userName}' and password = '{passWd}'"
-                if(db.prepare(sql) == 0):
-                    QMessageBox.warning(self, "warning", "密码不正确", QMessageBox.Close)
-                else:
+            sql = f"select * from editor where Ename = '{userName}'"
+            if db.prepare(sql) != 0:
+                sql = f"select EId from editor where Ename = '{userName}' and password = '{passWd}'"
+                if db.prepare(sql) != 0:
                     result = db.selectOne(sql)
-                    global user
-                    user = result[0]
-                    self.userLabel.setText(f"用户：{userName}")
-                    self.back()
-
-                    self.signInBt.setVisible(False)
-                    self.signUpBt.setVisible(False)
-                    self.signOutBt.setVisible(True)
+                    _user = result[0]
+                    _userName = userName
+                    self.close()
+                    ui_child_editor.show()
+                else:
+                    QMessageBox.warning(self, "warning", "密码不正确", QMessageBox.Close)
+            else:
+                sql = f"select * from viewer where Uname = '{userName}'"
+                if db.prepare(sql) == 0:
+                    QMessageBox.warning(self, "warning", "用户名不存在", QMessageBox.Close)
+                else:
+                    sql = f"select UId from viewer where Uname = '{userName}' and password = '{passWd}'"
+                    if db.prepare(sql) == 0:
+                        QMessageBox.warning(self, "warning", "密码不正确", QMessageBox.Close)
+                    else:
+                        result = db.selectOne(sql)
+                        _user = result[0]
+                        _userName = userName
+                        self.userLabel.setText(f"用户：{userName}")
+                        self.back()
+                        self.signInBt.setVisible(False)
+                        self.signUpBt.setVisible(False)
+                        self.signOutBt.setVisible(True)
         else:
             QMessageBox.warning(self, "warning", "用户名/密码不能为空", QMessageBox.Close)
 
@@ -93,8 +118,9 @@ class parentWindow(QMainWindow, Ui_MainWindow):
         self.frame.setVisible(False)
 
     def signOut(self):
-        global user
-        user = -1
+        global _user, _userName
+        _user = -1
+        _userName = ""
         self.signInBt.setVisible(True)
         self.signUpBt.setVisible(True)
         self.signOutBt.setVisible(False)
@@ -187,12 +213,13 @@ class childWindow_photo(QDialog, Ui_Photo):
             if self.start_time == "":
                 self.start_time = datetime.datetime.now()
                 self.frame_name = image_path + self.start_time.strftime("%Y_%m_%d_%H_%M_%S") + '.jpg'
-            print(self.frame_name)
             cv2.imwrite(self.frame_name, self.frame)
             create_time = self.start_time.strftime("%Y-%m-%d %H:%M:%S")
-            sql = f"insert into photo (path, upTime, label, user) values ('{self.frame_name}',{create_time}, {label}, {user})"
+            print(create_time)
+            sql = f"insert into photo(path, upTime, label, user) values ('{self.frame_name}','{create_time}', {label}, {_user})"
             db.prepare(sql)
             db.update()
+            print("分析完成")
 
 # 视频窗口
 class childWindow_movie(QDialog, Ui_Movie):
@@ -285,9 +312,10 @@ class childWindow_movie(QDialog, Ui_Movie):
             if self.start_time == "":
                 self.start_time = datetime.datetime.now()
             create_time = self.start_time.strftime("%Y-%m-%d %H:%M:%S")
-            sql = f"insert into video (path, upTime, label, user) values ('{self.mvName}',{create_time}, {label}, {user})"
+            sql = f"insert into video (path, upTime, label, user) values ('{self.mvName}','{create_time}', {label}, {_user})"
             db.prepare(sql)
             db.update()
+            print("分析完成")
 
     def Back(self):
         ui.show()
@@ -556,9 +584,40 @@ class childWindow_dynamic(QDialog, Ui_Dynamic):
         head = img[x1:x2, y1:y2, :]
         return face_direction_detect(head, self.face_dir_model, right, device=inter_cfg.device)
 
+# 管理员窗口
+class childWindow_editor(QDialog, Ui_Editor):
+    def __init__(self, parent=None):
+        super(childWindow_editor, self).__init__(parent)
+        self.setupUi(self)
+        self.CallBackFunctions()
+
+    def show(self):
+        super(childWindow_editor, self).show()
+        if _user == -1:
+            self.infoLabel.setText("欢迎使用")
+        else:
+            self.infoLabel.setText(f"管理员:{_userName}")
+            self.ReFreshUserData()
+
+    # 回调函数
+    def CallBackFunctions(self):
+        self.signOutBtn.clicked.connect(self.Back)
+
+    def Back(self):
+        global _user, _userName
+        _user = -1
+        _userName = ""
+        ui.show()
+        self.close()
+
+# 预览窗口
+class childWindow_preview(QDialog, Ui_PreView):
+    def __init__(self, parent=None):
+        super(childWindow_preview, self).__init__(parent)
+        self.setupUi(self)
 
 def open_childWindow(child_window):
-    if user != -1:
+    if _user != -1:
         child_window.show()
         child_window._initData()
         ui.close()
@@ -568,21 +627,25 @@ def open_childWindow(child_window):
 if __name__ == '__main__':
     app = QApplication(sys.argv)
 
-    global user
-    user = -1
+    global _user, _userName
+    _user = -1
+    _userName = ""
 
     ui = parentWindow()
     ui_child_movie = childWindow_movie()
     ui_child_photo = childWindow_photo()
     ui_child_dynamic = childWindow_dynamic()
     ui_child_signUp = childWindow_signUp()
+    ui_child_preview = childWindow_preview()
+    ui_child_editor = childWindow_editor()
+    ui_child_editor.preview = ui_child_preview
 
     movie_btn = ui.Moviebt
     photo_btn = ui.Photobt
     dynamic_btn = ui.Dynamicbt
     signUp_btn = ui.signUpBt
 
-    movie_btn.clicked.connect(lambda:open_childWindow(ui_child_movie))
+    movie_btn.clicked.connect(lambda: open_childWindow(ui_child_movie))
     photo_btn.clicked.connect(lambda: open_childWindow(ui_child_photo))
     dynamic_btn.clicked.connect(lambda: open_childWindow(ui_child_dynamic))
 

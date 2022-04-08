@@ -15,7 +15,7 @@ class Ui_Photo(object):
         self.ShowLb = QtWidgets.QLabel(self.frame)
         self.ShowLb.setGeometry(QtCore.QRect(0, 0, 980, 720))
         self.ShowLb.setText("")
-        self.ShowLb.setPixmap(QtGui.QPixmap("Image/tips.png"))
+        self.ShowLb.setPixmap(QtGui.QPixmap("../Image/tips.png"))
         self.ShowLb.setObjectName("ShowLb")
 
         self.layoutWidget = QtWidgets.QWidget(Photo)
