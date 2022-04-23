@@ -1,2 +1,6 @@
 *.pyc
 .idea/
+.idea/sx.iml
+.idea/misc.xml
+database.py
+database.py

@@ -2,7 +2,8 @@ import pymysql
 
 class Database(object):
     def __init__(self):
-        self.db = pymysql.connect(host="localhost", user="root", passwd="daq233622", database="huoti", charset="utf8")
+        #self.db = pymysql.connect(host="localhost", user="root", passwd="daq233622", database="huoti", charset="utf8")
+        self.db = pymysql.connect(host="localhost", user="root", passwd="Poison0809.", database="huoti", charset="utf8")
         self.cursor = self.db.cursor()
     def prepare(self, sql):
         return self.cursor.execute(sql)

@@ -8,7 +8,7 @@ from PyQt5.QtGui import QPixmap
 from PyQt5.QtWidgets import QApplication, QMainWindow, QDialog, QMessageBox
 from Editor import editor
 from numpy import iterable
-from  PyQt5 import QtWidgets, QtCore
+from PyQt5 import QtWidgets, QtCore
 
 from dynamic.pose_liveness_video import load_model, face_direction_detect
 from UI.mainUI import Ui_MainWindow
@@ -22,7 +22,10 @@ from PyQt5.QtGui import QImage
 
 # 视频检测
 from video_detect.main import recognition_liveness
-
+# 照片检测
+from tensorflow.keras.models import load_model
+from photo.mtcnn import MTCNN
+import numpy as np
 # 主窗口
 from dynamic.detector import detector
 import dynamic.inter_config as inter_cfg
@@ -141,6 +144,8 @@ class childWindow_photo(QDialog, Ui_Photo):
         self.Timer = QTimer()
         self.Timer.timeout.connect(self.TimerOutFunc)
         self.CallBackFunctions()
+        self.mtcnn = MTCNN("./photo/mtcnn.pb")#窗口初始化时加载模型
+        self.model = load_model("./photo/fas.h5")#窗口初始化时加载模型
 
     def _initData(self):
         self.frame = []
@@ -223,6 +228,48 @@ class childWindow_photo(QDialog, Ui_Photo):
             sql = f"insert into photo(path, upTime, label, user) values ('{self.frame_name}','{create_time}', {label}, {_user})"
             db.prepare(sql)
             db.update()
+            # 检测
+            image = self.frame
+            img_size = np.asarray(image.shape)[0:2]
+
+            bounding_boxes, scores, landmarks = self.mtcnn.detect(image)
+
+            nrof_faces = bounding_boxes.shape[0]
+            if nrof_faces > 0:
+                for det, pts in zip(bounding_boxes, landmarks):
+
+                    det = det.astype('int32')
+                    #print("face confidence: %2.3f" % confidence)
+                    det = np.squeeze(det)
+                    y1 = int(np.maximum(det[0], 0))
+                    x1 = int(np.maximum(det[1], 0))
+                    y2 = int(np.minimum(det[2], img_size[1]-1))
+                    x2 = int(np.minimum(det[3], img_size[0]-1))
+
+                    w = x2-x1
+                    h = y2-y1
+                    _r = int(max(w, h)*0.6)
+                    cx, cy = (x1+x2)//2, (y1+y2)//2
+
+                    x1 = cx - _r
+                    y1 = cy - _r
+
+                    x1 = int(max(x1,0))
+                    y1 = int(max(y1,0))
+
+                    x2 = cx + _r
+                    y2 = cy + _r
+
+                    h, w, c = image.shape
+                    x2 = int(min(x2, w-2))
+                    y2 = int(min(y2, h-2))
+
+                    _frame = image[y1:y2, x1:x2]
+                    temp = _frame.copy()
+                    temp_f = (cv2.resize(temp, (224, 224)) - 127.5) / 127.5
+                    score = self.model.predict(np.array([temp_f]))[0]
+                    #score = test_one(_frame)
+                    print(score)
             print("分析完成")
 
 # 视频窗口
