@@ -39,7 +39,7 @@ def read_img(path):
     return img
 
 
-def load_model(path, device='cpu'):
+def load_model_d(path, device='cpu'):
     model = Hopenet(torchvision.models.resnet.Bottleneck, [3, 4, 6, 3], 66)
     model.load_state_dict(torch.load(path))
     model.to(device)

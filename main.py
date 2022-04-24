@@ -10,7 +10,7 @@ from Editor import editor
 from numpy import iterable
 from PyQt5 import QtWidgets, QtCore
 
-from dynamic.pose_liveness_video import load_model, face_direction_detect
+from dynamic.pose_liveness_video import load_model_d, face_direction_detect
 from UI.mainUI import Ui_MainWindow
 from UI.MovieUI import Ui_Movie
 from UI.PhotoUI import Ui_Photo
@@ -494,7 +494,7 @@ class childWindow_dynamic(QDialog, Ui_Dynamic):
         self.face_pos_detector = dlib.get_frontal_face_detector()
         self.detector = detector(detector=dlib.shape_predictor(inter_cfg.landmarks),
                                  face_pos_detector=self.face_pos_detector)
-        self.face_dir_model = load_model(inter_cfg.path_hopenet, device=inter_cfg.device)
+        self.face_dir_model = load_model_d(inter_cfg.path_hopenet, device=inter_cfg.device)
 
     # 回调函数
     def CallBackFunctions(self):

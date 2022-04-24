@@ -20,7 +20,7 @@ class detector():
         if (inside_MAR > 0.7) or (outside_MAR > 0.3):
             COUNTER += 1
         else:
-            if COUNTER >= cfg.EYE_AR_CONSEC_FRAMES:
+            if COUNTER >= inter_cfg.EYE_AR_CONSEC_FRAMES:
                 TOTAL += 1
         return COUNTER, TOTAL
 
