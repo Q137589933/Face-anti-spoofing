@@ -39,12 +39,14 @@ def recognition_liveness(video_path, model_path, le_path, detector_folder, confi
     sequence_count_fake = 0
     sequence_count_real = 0
     c = 0
-    timeF = 50  # 视频帧计数间隔频率
+    timeF = 2  # 视频帧计数间隔频率
 
     while rval:
         # grab the frame from the threaded video stream
         # and resize it to have a maximum width of 600 pixels
         rval, frame = vs.read()
+        if rval == 0:
+            break
         # if ret:
         if c % timeF == 0:  # 每隔timeF帧进行存储操作
             frame = imutils.resize(frame, width=800)
