@@ -270,6 +270,11 @@ class childWindow_photo(QDialog, Ui_Photo):
                     score = self.model.predict(np.array([temp_f]))[0]
                     #score = test_one(_frame)
                     print(score)
+                    if score > 0.6:
+                        self.ShowLb.setText("检验为真脸")
+                    else:
+                        self.ShowLb.setText("检验为假脸")
+
             print("分析完成")
 
 # 视频窗口
@@ -444,12 +449,12 @@ class childWindow_signUp(QDialog, Ui_SignUp):
             QMessageBox.warning(self, "warning", "两次密码输入不一致", QMessageBox.Close)
             return
         email = self.email.text()
-        tel = self.email.text()
+        tel = self.tel.text()
         sql = f"select * from viewer where Uname = '{userName}'"
         if db.prepare(sql) != 0:
             QMessageBox.warning(self, "warning", "账号已存在", QMessageBox.Close)
             return
-        sql = f"insert into viewer (Uname, password, phone, email) values ('{userName}', '{passWord}', '{email}', '{tel}')"
+        sql = f"insert into viewer (Uname, password, phone, email) values ('{userName}', '{passWord}', '{tel}', '{email}')"
         db.prepare(sql)
         db.update()
         QMessageBox.information(self, "tips", "注册成功！", QMessageBox.Close)
