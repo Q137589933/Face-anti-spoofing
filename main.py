@@ -394,7 +394,7 @@ class childWindow_movie(QDialog, Ui_Movie):
         if success:
             if self.fCamera:
                 self.mvTime = self.mvTime + 1
-                self.processBar.setValue(self.mvTime)
+                self.processBar.setValue(self.mvTime*140.0*40.0/5000.0)
             self.OpenFrame(frame)
         else:
             self.viewTimer.stop()
