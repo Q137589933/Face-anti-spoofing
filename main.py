@@ -271,9 +271,11 @@ class childWindow_photo(QDialog, Ui_Photo):
                     #score = test_one(_frame)
                     print(score)
                     if score > 0.6:
-                        self.ShowLb.setText("检验为真脸")
+                        QMessageBox.information(self, "result", "检验为真脸", QMessageBox.Close)
+                        #self.ShowLb.setText("检验为真脸")
                     else:
-                        self.ShowLb.setText("检验为假脸")
+                        QMessageBox.information(self, "result", "检验为假脸", QMessageBox.Close)
+                        #self.ShowLb.setText("检验为假脸")
 
             print("分析完成")
 
@@ -366,8 +368,10 @@ class childWindow_movie(QDialog, Ui_Movie):
                                                    './video_detect/face_detector', confidence=0.7)
             if label_name == 'fake':
                 label = 0
+                QMessageBox.information(self, "result", "检验为假脸", QMessageBox.Close)
             else:
                 label = 1
+                QMessageBox.information(self, "result", "检验为真脸", QMessageBox.Close)
 
             create_time = self.start_time.strftime("%Y-%m-%d %H:%M:%S")
             sql = f"insert into video (path, upTime, label, user) values ('{self.mvName}','{create_time}', {label}, {_user})"
@@ -618,9 +622,11 @@ class childWindow_dynamic(QDialog, Ui_Dynamic):
 
     def detect_finish(self, success=1):  # 检测完成
         if success:
-            self.MsgLb.setText('验证成功！')
+            QMessageBox.information(self, "result", "检验为真脸", QMessageBox.Close)
+            #self.MsgLb.setText('验证成功！')
         else:
-            self.MsgLb.setText('验证失败')
+            QMessageBox.information(self, "result", "检验为假脸", QMessageBox.Close)
+            #self.MsgLb.setText('验证失败')
         self.ShowLb.clear()
         self.camera.release()
         self.Timer.stop()
